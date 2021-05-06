@@ -1,0 +1,23 @@
+{
+    "iterations"    : 1000,
+    "width_cm"      : 1000,
+    "height_cm"     : 1000,
+    "epsilon"       : 20,
+    "start" : {
+        "x" : 10,
+        "y" : 10
+    },
+    "goal" : {
+        "x" : 990,
+        "y" : 990
+    },
+    "num_obstacles" : 10,
+    "obstacle_width": 10,
+    "obstacle_height": 10,
+    "step" : 10,
+    "bias" : 10,
+    "tolerance" : {
+        "x" : 10,
+        "y" : 10
+    }
+}
