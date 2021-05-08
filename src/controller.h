@@ -1,14 +1,16 @@
 #ifndef CONTROLLER_H
 #define CONTROLLER_H
 #include <QList>
+#include <QTimer>
 #include "global.h"
 #include <stdlib.h>     /* srand, rand */
 #include <time.h>       /* time */
 
-class controller
+class controller : public QObject
 {
+    Q_OBJECT
 public:
-    controller();
+    explicit controller(QObject *parent = nullptr);
 
     QMap<Point, QList<Point>> sourceGraph;
     QList<Obstacle> obstacles;
@@ -58,7 +60,7 @@ public:
      * @param success: a bool that represents whether the node was inserted or not
      * @return Returns the point that was insterted into the graph
      */
-    Point connect(Point nearest, Point rand, bool &success);
+    Point connectLink(Point nearest, Point rand, bool &success);
 
     /**
      * @brief reachedGoal: checks to see if the new point is in the goal area
@@ -72,7 +74,26 @@ public:
      */
     bool rrt();
 
+    bool extractPath();
+
+    Point parent(Point child);
+
+signals:
+    void setGraph(QMap<Point, QList<Point>> graph);
+    void setObstacles(QList<Obstacle> list);
+    void setGoal(Point goalPoint);
+    void setStart(Point startPoint);
+    void setTolerances(double tolX, double tolY);
+    void setArenaBounds(int width, int height);
+    void setEpsilon(double eps);
+    void setGoalPath(QList<Point> path);
+
+public slots:
+    void startSim();
+    void stepSim();
+
 private:
+    QTimer stepTimer;
     int iterations = 0;
     int width_cm = 0;
     int height_cm = 0;
@@ -83,9 +104,10 @@ private:
     int step = 0;
     double tolerance_x = 0;
     double tolerance_y = 0;
-    double bias = 0;
     Point start;
     Point goal;
+    double bias = 0;
+    int count = 0;
 };
 
 #endif // CONTROLLER_H

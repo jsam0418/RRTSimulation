@@ -6,6 +6,11 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+    QSizePolicy policy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    policy.setHeightForWidth(true);
+    painter.setSizePolicy(policy);
+    ui->glWidgetLayout->addWidget(&painter);
+    connect(ui->startPushButton, &QPushButton::pressed, this, &MainWindow::startSim);
 }
 
 MainWindow::~MainWindow()

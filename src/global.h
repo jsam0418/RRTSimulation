@@ -1,6 +1,10 @@
 #ifndef GLOBAL_H
 #define GLOBAL_H
 
+#define ON 1
+#define OFF 0
+#define ENABLE_GRAPHICS ON //set this to 0 to disable graphics
+
 class Point
 {
 public:
@@ -22,6 +26,10 @@ public:
         } else {
             return false;
         }
+    }
+
+    bool operator==(const Point &p) const{
+        return this->x==p.x && this->y==p.y;
     }
 };
 
