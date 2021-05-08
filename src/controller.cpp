@@ -4,9 +4,9 @@
 #include <iostream>
 #include <math.h>
 
-controller::controller()
+controller::controller(QObject *parent) : QObject(parent)
 {
-
+    connect(&stepTimer, &QTimer::timeout, this, &controller::stepSim);
 }
 
 void controller::configure()
@@ -36,7 +36,7 @@ void controller::configure()
     val = obj.value(QString("step"));
     step = val.toInt();
     val = obj.value(QString("bias"));
-    step = val.toInt();
+    bias = val.toInt();
 
 //start
     val = obj.value(QString("start"));
@@ -66,6 +66,9 @@ void controller::configure()
 void controller::setup()
 {
     srand(time(NULL));
+    obstacles.clear();
+    int tempBias = bias;
+    bias = 0; //this is to ensure a random point is returned every time
     for(int i = 0; i < num_obstacles; i++){
         Obstacle newObstacle;
         newObstacle.width = obstacle_width;
@@ -76,6 +79,16 @@ void controller::setup()
         }
         obstacles.append(newObstacle);
     }
+    bias = tempBias;
+#if ENABLE_GRAPHICS == ON
+    emit setGraph(sourceGraph);
+    emit setObstacles(obstacles);
+    emit setGoal(goal);
+    emit setStart(start);
+    emit setTolerances(tolerance_x, tolerance_y);
+    emit setArenaBounds(width_cm, height_cm);
+    emit setEpsilon(epsilon);
+#endif
 }
 
 Point controller::getRandom()
@@ -103,13 +116,21 @@ bool controller::rrt()
         }
         Point near = nearest(rand);
         bool inserted = false;
-        Point newVertex = connect(near, rand, inserted);
+        Point newVertex = connectLink(near, rand, inserted);
         if(!inserted){
             continue;
         }
         if(reachedGoal(newVertex)){
+            sourceGraph[newVertex].append(goal);
+            sourceGraph.insert(goal, {});
             return true;
         }
+
+#if ENABLE_GRAPHICS == ON
+       if(i%10==0){
+           emit setGraph(sourceGraph);
+       }
+#endif
     }
     return false;
 }
@@ -141,7 +162,7 @@ Point controller::nearest(Point rand)
     return nearest;
 }
 
-Point controller::connect(Point nearestNode, Point rand, bool &success)
+Point controller::connectLink(Point nearestNode, Point rand, bool &success)
 {
     Point newNode;
     double vertexDist = sqrt(pow(nearestNode.x-rand.x,2)+pow(nearestNode.y-rand.y, 2));
@@ -156,7 +177,7 @@ Point controller::connect(Point nearestNode, Point rand, bool &success)
     }
     success = !throughObstacle(nearestNode, newNode);
     if(success){
-        sourceGraph.insert(newNode, {nearestNode});
+        sourceGraph.insert(newNode, {});
         sourceGraph[nearestNode].append(newNode);
     }
     return newNode;
@@ -185,4 +206,71 @@ bool controller::reachedGoal(Point test)
 {
     return (test.x > goal.x-tolerance_x/2.0 && test.x < goal.x+tolerance_x/2.0
             && test.y > goal.y-tolerance_y/2.0 && test.y < goal.y+tolerance_y/2.0);
+}
+
+void controller::startSim()
+{
+    setup();
+    count = 0;
+    sourceGraph.clear();
+    sourceGraph.insert(start, {});
+    stepTimer.setInterval(100);
+    stepTimer.start();
+
+}
+
+void controller::stepSim()
+{
+    for(int i =0; i < 10 && count < iterations; i++){
+        Point rand = getRandom();
+        if(!valid(rand)){
+            continue;
+        }
+        Point near = nearest(rand);
+        bool inserted = false;
+        Point newVertex = connectLink(near, rand, inserted);
+        if(!inserted){
+            continue;
+        }
+        if(reachedGoal(newVertex)){
+            sourceGraph[newVertex].append(goal);
+            sourceGraph.insert(goal, {newVertex});
+            stepTimer.stop();
+            emit setGraph(sourceGraph);
+            extractPath();
+            return;
+        }
+        count++;
+    }
+    emit setGraph(sourceGraph);
+}
+
+bool controller::extractPath()
+{
+    if(!sourceGraph.contains(goal)){
+        return false;
+    }
+    QList<Point> goalPath;
+    goalPath.append(goal);
+    Point parentVertex = goal;
+    while(!(parentVertex == start)){
+        parentVertex = parent(parentVertex);
+        goalPath.append(parentVertex);
+    }
+    goalPath.append(parentVertex);
+    emit setGoalPath(goalPath);
+    return true;
+}
+
+Point controller::parent(Point child)
+{
+    if(child == start){
+        return start;
+    }
+    for(Point vertex : sourceGraph.keys()){
+        if(sourceGraph[vertex].contains(child)){
+                return vertex;
+        }
+    }
+    return start;
 }
